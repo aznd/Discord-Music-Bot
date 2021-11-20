@@ -1,0 +1,4 @@
+Playlist functionality
+play_next functionality
+list command
+np command
