@@ -35,7 +35,6 @@ class Music(commands.Cog):
         self.YDL_OPTIONS = {'format': 'bestaudio', 'ignoreerrors': 'True'}
         self.data_dict = ""
         self.music_queue = []
-        self.vc = ""
 
     def search_yt(self, arg):
         with YoutubeDL(self.YDL_OPTIONS) as ydl:
@@ -47,25 +46,24 @@ class Music(commands.Cog):
     
     def play_next(self, ctx):
         if len(self.music_queue) > 0:
-            self.is_playing = True
-
-            # Get the first URL in the list
-            m_url = self.music_queue[0] 
-
-            # Pop the first element, because we just stored it in the var m_url
-            self.music_queue.pop(0)
-            song_there = os.path.isfile("song.webm")
-            if song_there:
-                os.remove("song.webm")
-            with yt_dlp.YoutubeDL(self.YDL_OPTIONS) as ydl:
-                ydl.download(m_url)
-            for file in os.listdir("./"):
-                if file.endswith(".webm"):
-                    os.rename(file, "song.webm")
-                    self.vc.play(discord.FFmpegPCMAudio("song.webm"),
-                                 after=lambda e: self.play_next(ctx))
-        else:
-            self.is_playing = False
+					self.is_playing = True
+					# Get the first URL in the list
+					m_url = self.music_queue[0] 
+					voice = discord.utils.get(self.client.voice_clients, guild=ctx.guild)
+					# Pop the first element, because we just stored it in the var m_url
+					self.music_queue.pop(0)
+					song_there = os.path.isfile("song.webm")
+					if song_there:
+							os.remove("song.webm")
+					with yt_dlp.YoutubeDL(self.YDL_OPTIONS) as ydl:
+							ydl.download(m_url)
+					for file in os.listdir("./"):
+							if file.endswith(".webm"):
+									os.rename(file, "song.webm")
+									voice.play(discord.FFmpegPCMAudio("song.webm"),
+																after=lambda e: self.play_next(ctx))
+				else:
+					self.is_playing = False
 
     async def play_music(self, ctx):
         if len(self.music_queue) > 0:
@@ -73,12 +71,10 @@ class Music(commands.Cog):
             m_url = self.music_queue[0]
             voicechannel_author = ctx.message.author.voice.channel
             voiceChannel = discord.utils.get(ctx.guild.voice_channels, name=str(voicechannel_author))
-
+						voice = discord.utils.get(self.client.voice_clients, guild=ctx.guild)
             #Try to connect, if it fails, just pass. We are already connected.
-            try:
-                self.vc = await voiceChannel.connect()
-            except Exception as e:
-                pass
+            if voice is None:
+                voice = await voiceChannel.connect()
             self.music_queue.pop(0)
             song_there = os.path.isfile("song.webm")
             if song_there:
@@ -88,7 +84,7 @@ class Music(commands.Cog):
             for file in os.listdir("./"):
                 if file.endswith(".webm"):
                     os.rename(file, "song.webm")
-                    self.vc.play(discord.FFmpegPCMAudio("song.webm"),
+                    voice.play(discord.FFmpegPCMAudio("song.webm"),
                                  after=lambda e: self.play_next(ctx))
 
     # Events
@@ -104,45 +100,40 @@ class Music(commands.Cog):
     # Commands
     @commands.command(aliases=['p'])
     async def play(self, ctx, *, args):
-        try:
-            try:
-                voice_channel = ctx.message.author.voice.channel
-            except:
-                await ctx.send("You need to be in a voice channel to use this command.")
-            if voice_channel is None:
-                # author not connected to any voice channel
-                await ctx.send("You need to be in a voice channel to use this command.")
-            else:
-                if "list" in str(args):
-                    # We have a playlist
-                    await ctx.send("Adding playlist to the queue, might take a minute, "
-                                   "depending on the length of your playlist.")
-                    await download_playlist(args, self.music_queue)
-                    if self.is_playing is False:
-                        await self.play_music(ctx)
-                else:
-                    song_dict = self.search_yt(args)
-                    webpage_url = song_dict.get("webpage_url")
-                    self.music_queue.append(webpage_url)
-                    if self.is_playing is False:
-                        await self.play_music(ctx)
-        except Exception as e:
-            print(e)
+					try:
+							voice_channel = ctx.message.author.voice.channel
+					except:
+							await ctx.send("You need to be in a voice channel to use this command.")
+					if voice_channel is None:
+							# author not connected to any voice channel
+							await ctx.send("You need to be in a voice channel to use this command.")
+					else:
+							if "list" in str(args):
+									# We have a playlist
+									await ctx.send("Adding playlist to the queue, might take a minute, "
+																	"depending on the length of your playlist.")
+									await download_playlist(args, self.music_queue)
+									if self.is_playing is False:
+											await self.play_music(ctx)
+							else:
+									song_dict = self.search_yt(args)
+									webpage_url = song_dict.get("webpage_url")
+									self.music_queue.append(webpage_url)
+									if self.is_playing is False:
+											await self.play_music(ctx)
     
     @commands.command()
     async def stop(self, ctx):
-        try:
-            is_playing = self.vc.is_playing()
-            if is_playing:
-                self.music_queue = []
-                await ctx.send("Bot stopped and cleared the queue. "
-                               "(If you didnt want to clear the queue, "
-                               "use the pause command next time instead of stop.)")
-                self.vc.stop()
-            else:
-                await ctx.send("Bot is currently not playing anything.")
-        except Exception as e:
-            print(e)
+					voice = discord.utils.get(self.client.voice_clients, 															guild=ctx.guild)
+					is_playing = voice.is_playing()
+					if is_playing:
+							self.music_queue = []
+							await ctx.send("Bot stopped and cleared the queue. "
+															"(If you didnt want to clear the queue, "
+															"use the pause command next time instead of stop.)")
+							voice.stop()
+					else:
+							await ctx.send("Bot is currently not playing 												anything.")
 
     @commands.command(aliases=['l'])
     async def leave(self, ctx):
