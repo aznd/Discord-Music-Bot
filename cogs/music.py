@@ -9,7 +9,7 @@ import asyncio
 import random
 
 import yt_dlp
-logging.basicConfig(level=logging.WARNING)
+logging.basicConfig(level=logging.INFO)
 
 def to_thread(func: typing.Callable) -> typing.Coroutine:
     @functools.wraps(func)
@@ -19,11 +19,11 @@ def to_thread(func: typing.Callable) -> typing.Coroutine:
 
 YDL_OPTIONS = {'format': 'bestaudio', 'ignoreerrors': 'True'}
 @to_thread
-def download_playlist(playlist_url, music_queue):
+def download_playlist(playlist_url, x):
     with yt_dlp.YoutubeDL(YDL_OPTIONS) as ydl:
         playlist_dict = ydl.extract_info(playlist_url, download=False)
         for i in playlist_dict['entries']:
-            music_queue.append(i['webpage_url'])
+            x.append(i['webpage_url'])
 
 
 class Music(commands.Cog):
@@ -46,22 +46,25 @@ class Music(commands.Cog):
         return self.data_dict
     
     def play_next(self, ctx):
-        if len(self.music_queue) > 0:
-            self.is_playing = True
+        try:
+            if len(self.music_queue) > 0:
+                self.is_playing = True
 
-            # Get the first URL in the list
-            m_url = self.music_queue[0] 
+                # Get the first URL in the list
+                m_url = self.music_queue[0] 
 
-            # Pop the first element, because we just stored it in the var m_url
-            self.music_queue.pop(0)
-            with yt_dlp.YoutubeDL(self.YDL_OPTIONS) as ydl:
-                ydl.download(m_url)
-            for file in os.listdir("./"):
-                if file.endswith(".webm"):
-                    os.rename(file, "song.webm")
-                    self.vc.play(discord.FFmpegPCMAudio("song.webm"), after=lambda e: self.play_next(ctx))
-        else:
-            self.is_playing = False
+                # Pop the first element, because we just stored it in the var m_url
+                self.music_queue.pop(0)
+                with yt_dlp.YoutubeDL(self.YDL_OPTIONS) as ydl:
+                    ydl.download(m_url)
+                for file in os.listdir("./"):
+                    if file.endswith(".webm"):
+                        os.rename(file, "song.webm")
+                        self.vc.play(discord.FFmpegPCMAudio("song.webm"), after=lambda e: self.play_next(ctx))
+            else:
+                self.is_playing = False
+        except Exception as e:
+            print(e)
 
     async def play_music(self, ctx):
         if len(self.music_queue) > 0:
@@ -101,7 +104,8 @@ class Music(commands.Cog):
         else:
             if "list" in str(args):
                 # We have a playlist
-                print("We have playlist")
+                await ctx.send("Adding playlist to the queue, might take a minute, "
+                               "depending on the length of your playlist.")
                 await download_playlist(args, self.music_queue)
                 if self.is_playing is False:
                     print("eins yep")
@@ -154,8 +158,14 @@ class Music(commands.Cog):
     @commands.command()
     async def list(self, ctx):
         if len(self.music_queue) > 0:
-            for i in self.music_queue:
-                await ctx.send(i)
+            embed = discord.Embed(title="Queue:",
+                                  description=" ",
+                                  color=0xFF6733)
+            i = 1
+            for e in self.music_queue:
+                embed.add_field(name=str(i) + ":",
+                                value=str(e))
+                i += 1
         else:
             await ctx.send("Nothing is in the queue.")
 

@@ -1,4 +1,3 @@
-Playlist functionality (kinda done, but wrong music_queue is used.)
-maybe i could use a global var, so just at the very top music_queue = []
 list command (kinda done, make it look better)
 np command
+skip command (problem is, on skip we have to use voice.stop() but that will call after function so two tracks will be skipped.)
