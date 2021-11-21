@@ -46,25 +46,25 @@ class Music(commands.Cog):
         return self.data_dict
     
     def play_next(self, ctx):
-        try:
-            if len(self.music_queue) > 0:
-                self.is_playing = True
+        if len(self.music_queue) > 0:
+            self.is_playing = True
 
-                # Get the first URL in the list
-                m_url = self.music_queue[0] 
+            # Get the first URL in the list
+            m_url = self.music_queue[0] 
 
-                # Pop the first element, because we just stored it in the var m_url
-                self.music_queue.pop(0)
-                with yt_dlp.YoutubeDL(self.YDL_OPTIONS) as ydl:
-                    ydl.download(m_url)
-                for file in os.listdir("./"):
-                    if file.endswith(".webm"):
-                        os.rename(file, "song.webm")
-                        self.vc.play(discord.FFmpegPCMAudio("song.webm"), after=lambda e: self.play_next(ctx))
-            else:
-                self.is_playing = False
-        except Exception as e:
-            print(e)
+            # Pop the first element, because we just stored it in the var m_url
+            self.music_queue.pop(0)
+            song_there = os.path.isfile("song.webm")
+            if song_there:
+                os.remove("song.webm")
+            with yt_dlp.YoutubeDL(self.YDL_OPTIONS) as ydl:
+                ydl.download(m_url)
+            for file in os.listdir("./"):
+                if file.endswith(".webm"):
+                    os.rename(file, "song.webm")
+                    self.vc.play(discord.FFmpegPCMAudio("song.webm"), after=lambda e: self.play_next(ctx))
+        else:
+            self.is_playing = False
 
     async def play_music(self, ctx):
         if len(self.music_queue) > 0:
@@ -74,6 +74,9 @@ class Music(commands.Cog):
             voiceChannel = discord.utils.get(ctx.guild.voice_channels, name=str(voicechannel_author))
             self.vc = await voiceChannel.connect()
             self.music_queue.pop(0)
+            song_there = os.path.isfile("song.webm")
+            if song_there:
+                os.remove("song.webm")
             with yt_dlp.YoutubeDL(self.YDL_OPTIONS) as ydl:
                 ydl.download(m_url)
             for file in os.listdir("./"):
@@ -108,15 +111,12 @@ class Music(commands.Cog):
                                "depending on the length of your playlist.")
                 await download_playlist(args, self.music_queue)
                 if self.is_playing is False:
-                    print("eins yep")
                     await self.play_music(ctx)
             else:
-                print("Now in else")
                 song_dict = self.search_yt(args)
                 webpage_url = song_dict.get("webpage_url")
                 self.music_queue.append(webpage_url)
                 if self.is_playing is False:
-                    print("zwei yep")
                     await self.play_music(ctx)
     
     @commands.command()
@@ -157,21 +157,29 @@ class Music(commands.Cog):
 
     @commands.command()
     async def list(self, ctx):
-        if len(self.music_queue) > 0:
-            embed = discord.Embed(title="Queue:",
-                                  description=" ",
-                                  color=0xFF6733)
-            i = 1
-            for e in self.music_queue:
-                embed.add_field(name=str(i) + ":",
-                                value=str(e))
-                i += 1
+        works = False
+        if works is False:
+            await ctx.send("Sorry, not yet implemented.")
         else:
-            await ctx.send("Nothing is in the queue.")
+            if len(self.music_queue) > 0:
+                embed = discord.Embed(title="Queue:",
+                                      description=" ",
+                                      color=0xFF6733)
+                i = 1
+                for e in self.music_queue:
+                    embed.add_field(name=str(i) + ":",
+                                    value=str(e))
+                    i += 1
+            else:
+                await ctx.send("Nothing is in the queue.")
 
     @commands.command()
     async def skip(self, ctx):
         if len(self.music_queue) > 0:
+            voice = discord.utils.get(self.client.voice_clients, guild=ctx.guild)
+            # Dont use stop(), because that would call the after func, which we dont wantself.
+            # Using pause, we bypass that
+            voice.pause()
             self.play_next(ctx)
             await ctx.send("Skipped song.")
         else:
