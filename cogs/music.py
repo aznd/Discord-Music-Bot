@@ -9,7 +9,7 @@ import asyncio
 import random
 
 import yt_dlp
-logging.basicConfig(level=logging.INFO)
+logging.basicConfig(level=logging.WARNING)
 
 def to_thread(func: typing.Callable) -> typing.Coroutine:
     @functools.wraps(func)
