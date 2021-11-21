@@ -102,7 +102,7 @@ class Music(commands.Cog):
             await ctx.send('Unknown command. Use -help to see all commands.')
 
     # Commands
-    @commands.command()
+    @commands.command(aliases=['p'])
     async def play(self, ctx, *, args):
         try:
             try:
@@ -144,7 +144,7 @@ class Music(commands.Cog):
         except Exception as e:
             print(e)
 
-    @commands.command()
+    @commands.command(aliases=['l'])
     async def leave(self, ctx):
         voice = discord.utils.get(self.client.voice_clients, guild=ctx.guild)
         if voice is not None:
