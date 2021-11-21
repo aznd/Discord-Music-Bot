@@ -1,8 +1,6 @@
 from discord.ext import commands
 import os
-from dotenv import load_dotenv
-load_dotenv()
-TOKEN = os.getenv("DISCORD_TOKEN")
+TOKEN = os.environ['DISCORD_TOKEN']
 client = commands.Bot(command_prefix='-')
 
 
