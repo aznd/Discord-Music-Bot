@@ -62,7 +62,8 @@ class Music(commands.Cog):
             for file in os.listdir("./"):
                 if file.endswith(".webm"):
                     os.rename(file, "song.webm")
-                    self.vc.play(discord.FFmpegPCMAudio("song.webm"), after=lambda e: self.play_next(ctx))
+                    self.vc.play(discord.FFmpegPCMAudio("song.webm"),
+                                 after=lambda e: self.play_next(ctx))
         else:
             self.is_playing = False
 
@@ -72,7 +73,12 @@ class Music(commands.Cog):
             m_url = self.music_queue[0]
             voicechannel_author = ctx.message.author.voice.channel
             voiceChannel = discord.utils.get(ctx.guild.voice_channels, name=str(voicechannel_author))
-            self.vc = await voiceChannel.connect()
+
+            #Try to connect, if it fails, just pass. We are already connected.
+            try:
+                self.vc = await voiceChannel.connect()
+            except Exception as e:
+                pass
             self.music_queue.pop(0)
             song_there = os.path.isfile("song.webm")
             if song_there:
@@ -82,7 +88,8 @@ class Music(commands.Cog):
             for file in os.listdir("./"):
                 if file.endswith(".webm"):
                     os.rename(file, "song.webm")
-                    self.vc.play(discord.FFmpegPCMAudio("song.webm"), after=lambda e: self.play_next(ctx))
+                    self.vc.play(discord.FFmpegPCMAudio("song.webm"),
+                                 after=lambda e: self.play_next(ctx))
 
     # Events
     @commands.Cog.listener()
@@ -98,26 +105,29 @@ class Music(commands.Cog):
     @commands.command()
     async def play(self, ctx, *, args):
         try:
-            voice_channel = ctx.message.author.voice.channel
-        except:
-            await ctx.send("You need to be in a voice channel to use this command.")
-        if voice_channel is None:
-            # author not connected to any voice channel
-            await ctx.send("You need to be in a voice channel to use this command.")
-        else:
-            if "list" in str(args):
-                # We have a playlist
-                await ctx.send("Adding playlist to the queue, might take a minute, "
-                               "depending on the length of your playlist.")
-                await download_playlist(args, self.music_queue)
-                if self.is_playing is False:
-                    await self.play_music(ctx)
+            try:
+                voice_channel = ctx.message.author.voice.channel
+            except:
+                await ctx.send("You need to be in a voice channel to use this command.")
+            if voice_channel is None:
+                # author not connected to any voice channel
+                await ctx.send("You need to be in a voice channel to use this command.")
             else:
-                song_dict = self.search_yt(args)
-                webpage_url = song_dict.get("webpage_url")
-                self.music_queue.append(webpage_url)
-                if self.is_playing is False:
-                    await self.play_music(ctx)
+                if "list" in str(args):
+                    # We have a playlist
+                    await ctx.send("Adding playlist to the queue, might take a minute, "
+                                   "depending on the length of your playlist.")
+                    await download_playlist(args, self.music_queue)
+                    if self.is_playing is False:
+                        await self.play_music(ctx)
+                else:
+                    song_dict = self.search_yt(args)
+                    webpage_url = song_dict.get("webpage_url")
+                    self.music_queue.append(webpage_url)
+                    if self.is_playing is False:
+                        await self.play_music(ctx)
+        except Exception as e:
+            print(e)
     
     @commands.command()
     async def stop(self, ctx):
