@@ -59,9 +59,9 @@ class Music(commands.Cog):
                     ydl.download(m_url)
             for file in os.listdir("./"):
                     if file.endswith(".webm"):
-                            os.rename(file, "song.webm")
-                            voice.play(discord.FFmpegPCMAudio("song.webm"),
-                                                        after=lambda e: self.play_next(ctx))
+                        os.rename(file, "song.webm")
+                        voice.play(discord.FFmpegPCMAudio("song.webm"),
+                                                    after=lambda e: self.play_next(ctx))
         else:
             self.is_playing = False
 
@@ -85,7 +85,7 @@ class Music(commands.Cog):
                 if file.endswith(".webm"):
                     os.rename(file, "song.webm")
                     voice.play(discord.FFmpegPCMAudio("song.webm"),
-                                 after=lambda e: self.play_next(ctx))
+                               after=lambda e: self.play_next(ctx))
 
     # Events
     @commands.Cog.listener()
@@ -101,26 +101,26 @@ class Music(commands.Cog):
     @commands.command(aliases=['p'])
     async def play(self, ctx, *, args):
         try:
-                voice_channel = ctx.message.author.voice.channel
+            voice_channel = ctx.message.author.voice.channel
         except:
-                await ctx.send("You need to be in a voice channel to use this command.")
+            await ctx.send("You need to be in a voice channel to use this command.")
         if voice_channel is None:
-                # author not connected to any voice channel
-                await ctx.send("You need to be in a voice channel to use this command.")
+            # author not connected to any voice channel
+            await ctx.send("You need to be in a voice channel to use this command.")
         else:
-                if "list" in str(args):
-                        # We have a playlist
-                        await ctx.send("Adding playlist to the queue, might take a minute, "
-                                                        "depending on the length of your playlist.")
-                        await download_playlist(args, self.music_queue)
-                        if self.is_playing is False:
-                                await self.play_music(ctx)
-                else:
-                        song_dict = self.search_yt(args)
-                        webpage_url = song_dict.get("webpage_url")
-                        self.music_queue.append(webpage_url)
-                        if self.is_playing is False:
-                                await self.play_music(ctx)
+            if "list" in str(args):
+                # We have a playlist
+                await ctx.send("Adding playlist to the queue, might take a minute, "
+                                                "depending on the length of your playlist.")
+                await download_playlist(args, self.music_queue)
+                if self.is_playing is False:
+                        await self.play_music(ctx)
+            else:
+                song_dict = self.search_yt(args)
+                webpage_url = song_dict.get("webpage_url")
+                self.music_queue.append(webpage_url)
+                if self.is_playing is False:
+                        await self.play_music(ctx)
     
     @commands.command()
     async def stop(self, ctx):
