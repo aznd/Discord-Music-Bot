@@ -20,10 +20,13 @@ def to_thread(func: typing.Callable) -> typing.Coroutine:
 YDL_OPTIONS = {'format': 'bestaudio', 'ignoreerrors': 'True'}
 @to_thread
 def download_playlist(playlist_url, x):
-    with yt_dlp.YoutubeDL(YDL_OPTIONS) as ydl:
-        playlist_dict = ydl.extract_info(playlist_url, download=False)
-        for i in playlist_dict['entries']:
-            x.append(i['webpage_url'])
+    try:
+        with yt_dlp.YoutubeDL(YDL_OPTIONS) as ydl:
+            playlist_dict = ydl.extract_info(playlist_url, download=False)
+            for i in playlist_dict['entries']:
+                x.append(i['webpage_url'])
+    except Exception as e:
+        print(e)
 
 
 class Music(commands.Cog):
