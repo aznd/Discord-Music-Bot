@@ -1,3 +1,4 @@
+from threading import ExceptHookArgs
 import discord
 import os
 from discord.ext import commands
@@ -20,14 +21,15 @@ def to_thread(func: typing.Callable) -> typing.Coroutine:
 YDL_OPTIONS = {'format': 'bestaudio', 'ignoreerrors': 'True'}
 @to_thread
 def download_playlist(playlist_url, x):
-    try:
-        with yt_dlp.YoutubeDL(YDL_OPTIONS) as ydl:
-            playlist_dict = ydl.extract_info(playlist_url, download=False)
+    with yt_dlp.YoutubeDL(YDL_OPTIONS) as ydl:
+        playlist_dict = ydl.extract_info(playlist_url, download=False)
+        try:
             for i in playlist_dict['entries']:
+                print("Neues Element: ")
+                print(i)
                 x.append(i['webpage_url'])
-    except Exception as e:
-        print(e)
-
+        except TypeError as e:
+            print(e)
 
 class Music(commands.Cog):
     
@@ -38,6 +40,7 @@ class Music(commands.Cog):
         self.YDL_OPTIONS = {'format': 'bestaudio', 'ignoreerrors': 'True'}
         self.data_dict = ""
         self.music_queue = []
+        self.now_playing_url = ""
 
     def search_yt(self, arg):
         with YoutubeDL(self.YDL_OPTIONS) as ydl:
@@ -52,6 +55,7 @@ class Music(commands.Cog):
             self.is_playing = True
             # Get the first URL in the list
             m_url = self.music_queue[0] 
+            self.now_playing_url = m_url
             voice = discord.utils.get(self.client.voice_clients, guild=ctx.guild)
             # Pop the first element, because we just stored it in the var m_url
             self.music_queue.pop(0)
@@ -67,11 +71,15 @@ class Music(commands.Cog):
                                                     after=lambda e: self.play_next(ctx))
         else:
             self.is_playing = False
+            voice = discord.utils.get(self.client.voice_clients, guild=ctx.guild)
+            self.client.loop.create_task(ctx.send("Queue is now empty, leaving the channel."))
+            self.client.loop.create_task(voice.disconnect())
 
     async def play_music(self, ctx):
         if len(self.music_queue) > 0:
             self.is_playing = True
             m_url = self.music_queue[0]
+            self.now_playing_url = m_url
             voicechannel_author = ctx.message.author.voice.channel
             voiceChannel = discord.utils.get(ctx.guild.voice_channels, name=str(voicechannel_author))
             voice = discord.utils.get(self.client.voice_clients, guild=ctx.guild)
@@ -179,7 +187,7 @@ class Music(commands.Cog):
 
     @commands.command()
     async def skip(self, ctx):
-        if len(self.music_queue) > 0:
+        if len(self.music_queue) > 0:   
             voice = discord.utils.get(self.client.voice_clients, guild=ctx.guild)
             # Dont use stop(), because that would call the after func, which we dont wantself.
             # Using pause, we bypass that
@@ -196,6 +204,26 @@ class Music(commands.Cog):
             await ctx.send("Shuffled the queue.")
         else:
             await ctx.send("Nothing is in the queue.")
+
+    @commands.command()
+    async def np(self, ctx):
+        if self.is_playing is False:
+            await ctx.send("Nothing is currently playing.")
+        else:
+            with yt_dlp.YoutubeDL(YDL_OPTIONS) as ydl:
+                data = ydl.extract_info(self.now_playing_url, download=False)
+                title = data.get("title")
+                artist = data.get("artist")
+                thumbnail = data.get("thumbnail") 
+                embed = discord.Embed(title="Now Playing:",
+                                      description="Title: " + str(title),
+                                      color=0xFF6733)
+                if artist is None:
+                    embed.add_field(name="Unknown artist.", value=self.now_playing_url )
+                else:
+                    embed.add_field(name="Artist: " + str(artist), value=self.now_playing_url)
+                embed.set_thumbnail(url=thumbnail)
+                await ctx.send(embed=embed)
 
 def setup(client):
     client.add_cog(Music(client))
