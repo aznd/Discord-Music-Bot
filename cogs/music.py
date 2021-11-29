@@ -122,12 +122,15 @@ class Music(commands.Cog):
             await ctx.send("You need to be in a voice channel to use this command.")
         else:
             if "list" in str(args):
-                # We have a playlist
-                await ctx.send("Adding playlist to the queue, might take a minute, "
-                                                "depending on the length of your playlist.")
-                await self.download_playlist(args, self.music_queue)
-                if self.is_playing is False:
-                        await self.play_music(ctx)
+                try:
+                    # We have a playlist
+                    await ctx.send("Adding playlist to the queue, might take a minute, "
+                                                    "depending on the length of your playlist.")
+                    await self.download_playlist(args, self.music_queue)
+                    if self.is_playing is False:
+                            await self.play_music(ctx)
+                except Exception as e:
+                    print(e)
             else:
                 song_dict = self.search_yt(args)
                 webpage_url = song_dict.get("webpage_url")
