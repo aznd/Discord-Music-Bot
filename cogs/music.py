@@ -13,33 +13,36 @@ import yt_dlp
 logging.basicConfig(level=logging.WARNING)
 
 def to_thread(func: typing.Callable) -> typing.Coroutine:
-    @functools.wraps(func)
-    async def wrapper(*args, **kwargs):
-        return await asyncio.to_thread(func, *args, **kwargs)
-    return wrapper
+        @functools.wraps(func)
+        async def wrapper(*args, **kwargs):
+            return await asyncio.to_thread(func, *args, **kwargs)
+        return wrapper
 
-YDL_OPTIONS = {'format': 'bestaudio', 'ignoreerrors': 'True'}
 
-@to_thread
-def download_playlist(playlist_url, x):
-   with yt_dlp.YoutubeDL(YDL_OPTIONS) as ydl:
-       playlist_dict = ydl.extract_info(playlist_url, download=False)
-       for i in playlist_dict['entries']:
-           try:
-               x.append(i['webpage_url'])
-           except Exception:
-            pass
+YDL_OPTIONS = {'format': 'bestaudio', 'ignoreerrors' : 'true'}
 
 class Music(commands.Cog):
 
     def __init__(self, client):
         self.client = client
-        self.FFMPEG_OPTIONS = {'before_options': '-reconnect 1 -reconnect_streamed 1 -reconnect_delay_max 5', 'options': '-vn'}
         self.is_playing = False
-        self.YDL_OPTIONS = {'format': 'bestaudio', 'ignoreerrors': 'True'}
+
+        self.YDL_OPTIONS = {'format': 'bestaudio/best', 'ingoreerrors': 'true'}
         self.data_dict = ""
         self.music_queue = []
         self.now_playing_url = ""
+
+    
+    @to_thread
+    def download_playlist(self, playlist_url, x):
+       with yt_dlp.YoutubeDL(YDL_OPTIONS) as ydl:
+           playlist_dict = ydl.extract_info(playlist_url, download=False)
+           for i in playlist_dict['entries']:
+               try:
+                   x.append(i['webpage_url'])
+               except Exception:
+                pass
+
 
     def search_yt(self, arg):
         with YoutubeDL(self.YDL_OPTIONS) as ydl:
@@ -122,7 +125,7 @@ class Music(commands.Cog):
                 # We have a playlist
                 await ctx.send("Adding playlist to the queue, might take a minute, "
                                                 "depending on the length of your playlist.")
-                await download_playlist(args, self.music_queue)
+                await self.download_playlist(args, self.music_queue)
                 if self.is_playing is False:
                         await self.play_music(ctx)
             else:
