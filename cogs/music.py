@@ -25,9 +25,9 @@ def download_playlist(playlist_url, x):
    with yt_dlp.YoutubeDL(YDL_OPTIONS) as ydl:
        playlist_dict = ydl.extract_info(playlist_url, download=False)
        for i in playlist_dict['entries']:
-        try:
-            x.append(i['webpage_url'])
-        except Exception:
+           try:
+               x.append(i['webpage_url'])
+           except Exception:
             pass
 
 class Music(commands.Cog):
@@ -171,6 +171,8 @@ class Music(commands.Cog):
         works = False
         if works is False:
             await ctx.send("Sorry, not yet implemented.")
+            for i in self.music_queue:
+                print(i)
         else:
             if len(self.music_queue) > 0:
                 embed = discord.Embed(title="Queue:",
