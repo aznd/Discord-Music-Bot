@@ -19,20 +19,19 @@ def to_thread(func: typing.Callable) -> typing.Coroutine:
     return wrapper
 
 YDL_OPTIONS = {'format': 'bestaudio', 'ignoreerrors': 'True'}
+
 @to_thread
 def download_playlist(playlist_url, x):
-    with yt_dlp.YoutubeDL(YDL_OPTIONS) as ydl:
-        playlist_dict = ydl.extract_info(playlist_url, download=False)
+   with yt_dlp.YoutubeDL(YDL_OPTIONS) as ydl:
+       playlist_dict = ydl.extract_info(playlist_url, download=False)
+       for i in playlist_dict['entries']:
         try:
-            for i in playlist_dict['entries']:
-                print("Neues Element: ")
-                print(i)
-                x.append(i['webpage_url'])
-        except TypeError as e:
-            print(e)
+            x.append(i['webpage_url'])
+        except Exception:
+            pass
 
 class Music(commands.Cog):
-    
+
     def __init__(self, client):
         self.client = client
         self.FFMPEG_OPTIONS = {'before_options': '-reconnect 1 -reconnect_streamed 1 -reconnect_delay_max 5', 'options': '-vn'}
