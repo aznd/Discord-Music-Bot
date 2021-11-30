@@ -101,26 +101,32 @@ class Music(commands.Cog):
     @commands.command(aliases=['p'])
     async def play(self, ctx, *, args):
         try:
-            voice_channel = ctx.message.author.voice.channel
-        except:
-            await ctx.send("You need to be in a voice channel to use this command.")
-        if voice_channel is None:
-            # author not connected to any voice channel
-            await ctx.send("You need to be in a voice channel to use this command.")
-        else:
-            if "list" in str(args):
-                # We have a playlist
-                self.download_playlist(args, self.music_queue)
-                await ctx.send("Added playlist to queue.")
-                if self.is_playing is False:
-                    await self.play_music(ctx)
+            try:
+                voice_channel = ctx.message.author.voice.channel
+            except:
+                await ctx.send("You need to be in a voice channel to use this command.")
+            if voice_channel is None:
+                # author not connected to any voice channel
+                await ctx.send("You need to be in a voice channel to use this command.")
             else:
-                song_dict = self.search_yt(args)
-                url = song_dict.get("url")
-                self.music_queue.append(url)
-                await ctx.send("Song added to the queue.")
-                if self.is_playing is False:
-                    await self.play_music(ctx)
+                if "list" in str(args):
+                    # We have a playlist
+                    self.download_playlist(args, self.music_queue)
+                    await ctx.send("Added playlist to queue.")
+                    if self.is_playing is False:
+                        await self.play_music(ctx)
+                else:
+                    song_dict: typing.Dict = self.search_yt(args)
+                    if "webpage_url" in song_dict:
+                        url = song_dict.get("webpage_url")
+                    else:
+                        url = song_dict.get("url")
+                    self.music_queue.append(url)
+                    await ctx.send("Song added to the queue.")
+                    if self.is_playing is False:
+                        await self.play_music(ctx)
+        except Exception as e:
+            print(e)
     
     @commands.command()
     async def stop(self, ctx):
