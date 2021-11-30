@@ -1,4 +1,3 @@
-from threading import ExceptHookArgs
 import discord
 import os
 from discord.ext import commands
@@ -117,8 +116,9 @@ class Music(commands.Cog):
                     await self.play_music(ctx)
             else:
                 song_dict = self.search_yt(args)
-                webpage_url = song_dict.get("webpage_url")
-                self.music_queue.append(webpage_url)
+                url = song_dict.get("url")
+                self.music_queue.append(url)
+                await ctx.send("Song added to the queue.")
                 if self.is_playing is False:
                     await self.play_music(ctx)
     
@@ -178,15 +178,17 @@ class Music(commands.Cog):
 
     @commands.command()
     async def skip(self, ctx):
-        if len(self.music_queue) > 0:   
-            voice = discord.utils.get(self.client.voice_clients, guild=ctx.guild)
+        voice = discord.utils.get(self.client.voice_clients, guild=ctx.guild)
+        if voice is None or len(self.music_queue) < 0:
+            await ctx.send("Nothing is in the queue, or playing.")
+        elif len(self.music_queue) > 0:   
             # Dont use stop(), because that would call the after func, which we dont wantself.
             # Using pause, we bypass that
             voice.pause()
             self.play_next(ctx)
             await ctx.send("Skipped song.")
-        else:
-            await ctx.send("Nothing is in the queue.")
+        elif voice.is_playing():
+            voice.stop()
         
     @commands.command()
     async def shuffle(self, ctx):
