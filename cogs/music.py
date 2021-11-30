@@ -111,9 +111,8 @@ class Music(commands.Cog):
         else:
             if "list" in str(args):
                 # We have a playlist
-                await ctx.send("Adding playlist to the queue, might take a minute, "
-                                "depending on the length of your playlist.")
                 self.download_playlist(args, self.music_queue)
+                await ctx.send("Added playlist to queue.")
                 if self.is_playing is False:
                     await self.play_music(ctx)
             else:
