@@ -5,21 +5,10 @@ from discord.ext import commands
 from yt_dlp import YoutubeDL
 import logging
 import typing
-import functools
-import asyncio
 import random
 
 import yt_dlp
 logging.basicConfig(level=logging.WARNING)
-
-def to_thread(func: typing.Callable) -> typing.Coroutine:
-        @functools.wraps(func)
-        async def wrapper(*args, **kwargs):
-            return await asyncio.to_thread(func, *args, **kwargs)
-        return wrapper
-
-
-YDL_OPTIONS = {'format': 'bestaudio', 'ignoreerrors' : 'true', 'extract_flat': 'in_playlist'}
 
 class Music(commands.Cog):
 
@@ -27,15 +16,14 @@ class Music(commands.Cog):
         self.client = client
         self.is_playing = False
 
-        self.YDL_OPTIONS = {'format': 'bestaudio/best', 'ingoreerrors': 'true'}
+        self.YDL_OPTIONS = {'format': 'bestaudio/best', 'ingoreerrors': 'true', 'extract_flat': 'in_playlist'}
         self.data_dict = ""
         self.music_queue = []
         self.now_playing_url = ""
 
     
-    @to_thread
     def download_playlist(self, playlist_url, x):
-       with yt_dlp.YoutubeDL(YDL_OPTIONS) as ydl:
+       with yt_dlp.YoutubeDL(self.YDL_OPTIONS) as ydl:
            playlist_dict: typing.Dict = ydl.extract_info(playlist_url, download=False)
            for i in playlist_dict['entries']:
                try:
