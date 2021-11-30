@@ -19,7 +19,7 @@ def to_thread(func: typing.Callable) -> typing.Coroutine:
         return wrapper
 
 
-YDL_OPTIONS = {'format': 'bestaudio', 'ignoreerrors' : 'true'}
+YDL_OPTIONS = {'format': 'bestaudio', 'ignoreerrors' : 'true', 'extract_flat': 'in_playlist'}
 
 class Music(commands.Cog):
 
@@ -36,10 +36,10 @@ class Music(commands.Cog):
     @to_thread
     def download_playlist(self, playlist_url, x):
        with yt_dlp.YoutubeDL(YDL_OPTIONS) as ydl:
-           playlist_dict = ydl.extract_info(playlist_url, download=False)
+           playlist_dict: typing.Dict = ydl.extract_info(playlist_url, download=False)
            for i in playlist_dict['entries']:
                try:
-                   x.append(i['webpage_url'])
+                   x.append(i['url'])
                except Exception:
                 pass
 
@@ -74,8 +74,9 @@ class Music(commands.Cog):
         else:
             self.is_playing = False
             voice = discord.utils.get(self.client.voice_clients, guild=ctx.guild)
-            self.client.loop.create_task(ctx.send("Queue is now empty, leaving the channel."))
-            self.client.loop.create_task(voice.disconnect())
+            if voice is not None:
+                self.client.loop.create_task(ctx.send("Queue is now empty, leaving the channel."))
+                self.client.loop.create_task(voice.disconnect())
 
     async def play_music(self, ctx):
         if len(self.music_queue) > 0:
