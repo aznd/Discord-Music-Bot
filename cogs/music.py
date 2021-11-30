@@ -15,7 +15,6 @@ class Music(commands.Cog):
     def __init__(self, client):
         self.client = client
         self.is_playing = False
-
         self.YDL_OPTIONS = {'format': 'bestaudio/best', 'ingoreerrors': 'true', 'extract_flat': 'in_playlist'}
         self.data_dict = ""
         self.music_queue = []
@@ -111,21 +110,18 @@ class Music(commands.Cog):
             await ctx.send("You need to be in a voice channel to use this command.")
         else:
             if "list" in str(args):
-                try:
-                    # We have a playlist
-                    await ctx.send("Adding playlist to the queue, might take a minute, "
-                                                    "depending on the length of your playlist.")
-                    await self.download_playlist(args, self.music_queue)
-                    if self.is_playing is False:
-                            await self.play_music(ctx)
-                except Exception as e:
-                    print(e)
+                # We have a playlist
+                await ctx.send("Adding playlist to the queue, might take a minute, "
+                                "depending on the length of your playlist.")
+                self.download_playlist(args, self.music_queue)
+                if self.is_playing is False:
+                    await self.play_music(ctx)
             else:
                 song_dict = self.search_yt(args)
                 webpage_url = song_dict.get("webpage_url")
                 self.music_queue.append(webpage_url)
                 if self.is_playing is False:
-                        await self.play_music(ctx)
+                    await self.play_music(ctx)
     
     @commands.command()
     async def stop(self, ctx):
@@ -206,7 +202,7 @@ class Music(commands.Cog):
         if self.is_playing is False:
             await ctx.send("Nothing is currently playing.")
         else:
-            with yt_dlp.YoutubeDL(YDL_OPTIONS) as ydl:
+            with yt_dlp.YoutubeDL(self.YDL_OPTIONS) as ydl:
                 data = ydl.extract_info(self.now_playing_url, download=False)
                 title = data.get("title")
                 artist = data.get("artist")
