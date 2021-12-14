@@ -1,2 +1,0 @@
-list command (kinda done, make it look better)
-np command
