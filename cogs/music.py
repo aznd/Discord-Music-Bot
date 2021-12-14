@@ -10,27 +10,30 @@ import yt_dlp
 logging.basicConfig(level=logging.WARNING)
 
 video_unavailable = "This video is no longer available. It will be skipped."
+queue_empty = "Queue is now empty, leaving the voice channel."
+user_not_in_vc = "You need to be in a voice channel to use this command."
+
 
 class Music(commands.Cog):
 
     def __init__(self, client):
         self.client = client
         self.is_playing = False
-        self.YDL_OPTIONS = {'format': 'bestaudio/best', 'ingoreerrors': 'true', 'extract_flat': 'in_playlist'}
+        self.YDL_OPTIONS = {'format': 'bestaudio/best',
+                            'extract_flat': 'in_playlist'}
         self.data_dict = ""
         self.music_queue = []
         self.now_playing_url = ""
 
-    
     def download_playlist(self, playlist_url, x):
-       with yt_dlp.YoutubeDL(self.YDL_OPTIONS) as ydl:
-           playlist_dict: typing.Dict = ydl.extract_info(playlist_url, download=False)
-           for i in playlist_dict['entries']:
-               try:
-                   x.append(i['url'])
-               except Exception:
-                pass
-
+        with yt_dlp.YoutubeDL(self.YDL_OPTIONS) as ydl:
+            playlist_dict: typing.Dict = ydl.extract_info(playlist_url,
+                                                          download=False)
+            for i in playlist_dict['entries']:
+                try:
+                    x.append(i['url'])
+                except Exception:
+                    pass
 
     def search_yt(self, arg, ctx):
         try:
@@ -38,35 +41,38 @@ class Music(commands.Cog):
                 if arg.startswith('http'):
                     self.data_dict = ydl.extract_info(arg, download=False)
                 else:
-                    self.data_dict = ydl.extract_info(f"ytsearch:{arg}",download=False)['entries'][0]
+                    self.data_dict = ydl.extract_info(f"ytsearch:{arg}",
+                                                      download=False)['entries'][0]
             return self.data_dict
         except Exception:
             self.client.loop.create_task(ctx.send(video_unavailable))
-    
+
     def play_next(self, ctx):
         if len(self.music_queue) > 0:
             self.is_playing = True
             # Get the first URL in the list
-            m_url = self.music_queue[0] 
+            m_url = self.music_queue[0]
             self.now_playing_url = m_url
-            voice = discord.utils.get(self.client.voice_clients, guild=ctx.guild)
+            voice = discord.utils.get(self.client.voice_clients,
+                                      guild=ctx.guild)
             # Pop the first element, because we just stored it in the var m_url
             self.music_queue.pop(0)
             song_there = os.path.isfile("song.webm")
             if song_there:
-                    os.remove("song.webm")
+                os.remove("song.webm")
             with yt_dlp.YoutubeDL(self.YDL_OPTIONS) as ydl:
-                    ydl.download(m_url)
+                ydl.download(m_url)
             for file in os.listdir("./"):
-                    if file.endswith(".webm"):
-                        os.rename(file, "song.webm")
-                        voice.play(discord.FFmpegPCMAudio("song.webm"),
-                                                    after=lambda e: self.play_next(ctx))
+                if file.endswith(".webm"):
+                    os.rename(file, "song.webm")
+                    voice.play(discord.FFmpegPCMAudio("song.webm"),
+                               after=lambda e: self.play_next(ctx))
         else:
             self.is_playing = False
-            voice = discord.utils.get(self.client.voice_clients, guild=ctx.guild)
+            voice = discord.utils.get(self.client.voice_clients,
+                                      guild=ctx.guild)
             if voice is not None:
-                self.client.loop.create_task(ctx.send("Queue is now empty, leaving the channel."))
+                self.client.loop.create_task(ctx.send(queue_empty))
                 self.client.loop.create_task(voice.disconnect())
 
     async def play_music(self, ctx):
@@ -75,8 +81,10 @@ class Music(commands.Cog):
             m_url = self.music_queue[0]
             self.now_playing_url = m_url
             voicechannel_author = ctx.message.author.voice.channel
-            voiceChannel = discord.utils.get(ctx.guild.voice_channels, name=str(voicechannel_author))
-            voice = discord.utils.get(self.client.voice_clients, guild=ctx.guild)
+            voiceChannel = discord.utils.get(ctx.guild.voice_channels,
+                                             name=str(voicechannel_author))
+            voice = discord.utils.get(self.client.voice_clients,
+                                      guild=ctx.guild)
             # Try to connect, if it fails, just pass. We are already connected.
             if voice is None:
                 voice = await voiceChannel.connect()
@@ -108,11 +116,11 @@ class Music(commands.Cog):
         try:
             try:
                 voice_channel = ctx.message.author.voice.channel
-            except:
-                await ctx.send("You need to be in a voice channel to use this command.")
+            except Exception:
+                await ctx.send(user_not_in_vc)
             if voice_channel is None:
                 # author not connected to any voice channel
-                await ctx.send("You need to be in a voice channel to use this command.")
+                await ctx.send(user_not_in_vc)
             else:
                 if "list" in str(args):
                     # We have a playlist
@@ -132,19 +140,20 @@ class Music(commands.Cog):
                         await self.play_music(ctx)
         except Exception as e:
             print(e)
-    
+
     @commands.command()
     async def stop(self, ctx):
-        voice = discord.utils.get(self.client.voice_clients, 															guild=ctx.guild)
+        voice = discord.utils.get(self.client.voice_clients,
+                                  guild=ctx.guild)
         is_playing = voice.is_playing()
         if is_playing:
             self.music_queue = []
             await ctx.send("Bot stopped and cleared the queue. "
-                                            "(If you didnt want to clear the queue, "
-                                            "use the pause command next time instead of stop.)")
+                           "(If you didnt want to clear the queue, "
+                           "use the pause command next time instead of stop.)")
             voice.stop()
         else:
-            await ctx.send("Bot is currently not playing 												anything.")
+            await ctx.send("Bot is currently not playing anything.")
 
     @commands.command(aliases=['l'])
     async def leave(self, ctx):
@@ -155,17 +164,16 @@ class Music(commands.Cog):
             await ctx.send("Bot left the channel and cleared the queue.")
         else:
             await ctx.send("Bot is currently not connected to any channel.")
-    
+
     @commands.command()
     async def join(self, ctx):
         try:
             voicechannel_author = ctx.message.author.voice.channel
             voiceChannel = discord.utils.get(ctx.guild.voice_channels,
                                              name=str(voicechannel_author))
-            voice = discord.utils.get(self.client.voice_clients, guild=ctx.guild)
             await voiceChannel.connect()
         except AttributeError:
-            await ctx.send("You need to be in a voice channel to use this command.")
+            await ctx.send(user_not_in_vc)
 
     @commands.command()
     async def list(self, ctx):
@@ -192,15 +200,16 @@ class Music(commands.Cog):
         voice = discord.utils.get(self.client.voice_clients, guild=ctx.guild)
         if voice is None or len(self.music_queue) < 0:
             await ctx.send("Nothing is in the queue, or playing.")
-        elif len(self.music_queue) > 0:   
-            # Dont use stop(), because that would call the after func, which we dont wantself.
+        elif len(self.music_queue) > 0:
+            # Dont use stop(), because that would call the after func
+            # which we dont want...
             # Using pause, we bypass that
             voice.pause()
             self.play_next(ctx)
             await ctx.send("Skipped song.")
         elif voice.is_playing():
             voice.stop()
-        
+
     @commands.command()
     async def shuffle(self, ctx):
         if len(self.music_queue) > 0:
@@ -218,16 +227,19 @@ class Music(commands.Cog):
                 data = ydl.extract_info(self.now_playing_url, download=False)
                 title = data.get("title")
                 artist = data.get("artist")
-                thumbnail = data.get("thumbnail") 
+                thumbnail = data.get("thumbnail")
                 embed = discord.Embed(title="Now Playing:",
                                       description="Title: " + str(title),
                                       color=0xFF6733)
                 if artist is None:
-                    embed.add_field(name="Unknown artist.", value=self.now_playing_url )
+                    embed.add_field(name="Unknown artist.",
+                                    value=self.now_playing_url)
                 else:
-                    embed.add_field(name="Artist: " + str(artist), value=self.now_playing_url)
+                    embed.add_field(name="Artist: " + str(artist),
+                                    value=self.now_playing_url)
                 embed.set_thumbnail(url=thumbnail)
                 await ctx.send(embed=embed)
+
 
 def setup(client):
     client.add_cog(Music(client))
