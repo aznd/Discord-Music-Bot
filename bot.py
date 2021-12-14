@@ -1,7 +1,8 @@
 from discord.ext import commands
 import os
-from keep_alive import keep_alive
-TOKEN = os.environ['DISCORD_TOKEN']
+from dotenv import load_dotenv
+load_dotenv()
+TOKEN = os.getenv("DISCORD_TOKEN")
 client = commands.Bot(command_prefix='-')
 
 
@@ -9,6 +10,7 @@ client = commands.Bot(command_prefix='-')
 async def load(ctx, extension):
     client.load_extension(f'cogs.{extension}')
     await ctx.send("Loaded cog.")
+
 
 @client.command()
 async def unload(ctx, extension):
@@ -29,5 +31,4 @@ for filename in os.listdir('./cogs'):
     if filename.endswith('.py'):
         client.load_extension(f'cogs.{filename[:-3]}')
 
-keep_alive()
 client.run(TOKEN)

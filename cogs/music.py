@@ -9,6 +9,8 @@ import random
 import yt_dlp
 logging.basicConfig(level=logging.WARNING)
 
+video_unavailable = "This video is no longer available. It will be skipped."
+
 class Music(commands.Cog):
 
     def __init__(self, client):
@@ -30,13 +32,16 @@ class Music(commands.Cog):
                 pass
 
 
-    def search_yt(self, arg):
-        with YoutubeDL(self.YDL_OPTIONS) as ydl:
-            if arg.startswith('http'):
-                self.data_dict = ydl.extract_info(arg, download=False)
-            else:
-                self.data_dict = ydl.extract_info(f"ytsearch:{arg}",download=False)['entries'][0]
-        return self.data_dict
+    def search_yt(self, arg, ctx):
+        try:
+            with YoutubeDL(self.YDL_OPTIONS) as ydl:
+                if arg.startswith('http'):
+                    self.data_dict = ydl.extract_info(arg, download=False)
+                else:
+                    self.data_dict = ydl.extract_info(f"ytsearch:{arg}",download=False)['entries'][0]
+            return self.data_dict
+        except Exception:
+            self.client.loop.create_task(ctx.send(video_unavailable))
     
     def play_next(self, ctx):
         if len(self.music_queue) > 0:
@@ -72,7 +77,7 @@ class Music(commands.Cog):
             voicechannel_author = ctx.message.author.voice.channel
             voiceChannel = discord.utils.get(ctx.guild.voice_channels, name=str(voicechannel_author))
             voice = discord.utils.get(self.client.voice_clients, guild=ctx.guild)
-            #Try to connect, if it fails, just pass. We are already connected.
+            # Try to connect, if it fails, just pass. We are already connected.
             if voice is None:
                 voice = await voiceChannel.connect()
             self.music_queue.pop(0)
@@ -116,7 +121,7 @@ class Music(commands.Cog):
                     if self.is_playing is False:
                         await self.play_music(ctx)
                 else:
-                    song_dict: typing.Dict = self.search_yt(args)
+                    song_dict: typing.Dict = self.search_yt(args, ctx)
                     if "webpage_url" in song_dict:
                         url = song_dict.get("webpage_url")
                     else:
