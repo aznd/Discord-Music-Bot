@@ -19,6 +19,7 @@ class Music(commands.Cog):
     def __init__(self, client):
         self.client = client
         self.is_playing = False
+        self.should_repeat = False
         self.YDL_OPTIONS = {'format': 'bestaudio/best',
                             'extract_flat': 'in_playlist'}
         self.data_dict = ""
@@ -48,32 +49,36 @@ class Music(commands.Cog):
             self.client.loop.create_task(ctx.send(video_unavailable))
 
     def play_next(self, ctx):
-        if len(self.music_queue) > 0:
-            self.is_playing = True
-            # Get the first URL in the list
-            m_url = self.music_queue[0]
-            self.now_playing_url = m_url
-            voice = discord.utils.get(self.client.voice_clients,
-                                      guild=ctx.guild)
-            # Pop the first element, because we just stored it in the var m_url
-            self.music_queue.pop(0)
-            song_there = os.path.isfile("song.webm")
-            if song_there:
-                os.remove("song.webm")
-            with yt_dlp.YoutubeDL(self.YDL_OPTIONS) as ydl:
-                ydl.download(m_url)
-            for file in os.listdir("./"):
-                if file.endswith(".webm"):
-                    os.rename(file, "song.webm")
-                    voice.play(discord.FFmpegPCMAudio("song.webm"),
-                               after=lambda e: self.play_next(ctx))
+        if self.should_repeat:
+            voice = discord.utils.get(self.client.voice_clients, guild=ctx.guild)
+            voice.play(discord.FFmpegPCMAudio("song.webm"), after=lambda e: self.play_next(ctx))
         else:
-            self.is_playing = False
-            voice = discord.utils.get(self.client.voice_clients,
-                                      guild=ctx.guild)
-            if voice is not None:
-                self.client.loop.create_task(ctx.send(queue_empty))
-                self.client.loop.create_task(voice.disconnect())
+            if len(self.music_queue) > 0:
+                self.is_playing = True
+                # Get the first URL in the list
+                m_url = self.music_queue[0]
+                self.now_playing_url = m_url
+                voice = discord.utils.get(self.client.voice_clients,
+                                          guild=ctx.guild)
+                # Pop the first element, because we just stored it in the var m_url
+                self.music_queue.pop(0)
+                song_there = os.path.isfile("song.webm")
+                if song_there:
+                    os.remove("song.webm")
+                    with yt_dlp.YoutubeDL(self.YDL_OPTIONS) as ydl:
+                        ydl.download(m_url)
+                    for file in os.listdir("./"):
+                        if file.endswith(".webm"):
+                            os.rename(file, "song.webm")
+                            voice.play(discord.FFmpegPCMAudio("song.webm"),
+                                       after=lambda e: self.play_next(ctx))
+            else:
+                self.is_playing = False
+                voice = discord.utils.get(self.client.voice_clients,
+                                          guild=ctx.guild)
+                if voice is not None:
+                    self.client.loop.create_task(ctx.send(queue_empty))
+                    self.client.loop.create_task(voice.disconnect())
 
     async def play_music(self, ctx):
         if len(self.music_queue) > 0:
@@ -224,7 +229,7 @@ class Music(commands.Cog):
             await ctx.send("Nothing is currently playing.")
         else:
             with yt_dlp.YoutubeDL(self.YDL_OPTIONS) as ydl:
-                data = ydl.extract_info(self.now_playing_url, download=False)
+                data: typing.Dict = ydl.extract_info(self.now_playing_url, download=False)
                 title = data.get("title")
                 artist = data.get("artist")
                 thumbnail = data.get("thumbnail")
@@ -239,6 +244,18 @@ class Music(commands.Cog):
                                     value=self.now_playing_url)
                 embed.set_thumbnail(url=thumbnail)
                 await ctx.send(embed=embed)
+
+    @commands.command(aliases=['loop'])
+    async def repeat(self, ctx):
+        if self.is_playing is False:
+            await ctx.send("Nothing is currently playing.")
+        else:
+            if self.should_repeat == False:
+                self.should_repeat = True
+                await ctx.send("Now looping current song. To end this, use this command again.")
+            elif self.should_repeat == True:
+                self.should_repeat = False
+                await ctx.send("No longer looping the current song.")
 
 
 def setup(client):
