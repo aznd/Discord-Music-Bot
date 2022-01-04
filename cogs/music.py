@@ -13,8 +13,9 @@ logging.basicConfig(level=logging.WARNING)
 video_unavailable = "This video is no longer available. It will be skipped."
 queue_empty = "Queue is now empty, leaving the voice channel."
 user_not_in_vc = "You need to be in a voice channel to use this command."
-long_video = """This seems like a long video. The download could take longer than normal.""" \
+warn_long_video = """This seems like a long video. The download could take longer than normal.""" \
              """The bot will still respond during download."""
+crashed_bot = "Well, you messed up the bot. The bot will now leave and clear the queue. Maybe don't spam the skip command next time..."
 
 def to_thread(func: typing.Callable) -> typing.Coroutine:
         global queue_of_titles
@@ -36,6 +37,7 @@ class Music(commands.Cog):
                             'extract_flat': 'in_playlist'}
         self.data_dict = ""
         self.music_queue = []
+        self.music_queue_titles = []
         self.now_playing_url = ""
         self.long_video = False
     
@@ -47,6 +49,7 @@ class Music(commands.Cog):
             for i in playlist_dict['entries']:
                 try:
                     x.append(i['url'])
+                    self.music_queue_titles.append(i['title'])
                 except Exception:
                     pass
 
@@ -66,16 +69,29 @@ class Music(commands.Cog):
                 return self.data_dict
         except Exception:
             self.client.loop.create_task(ctx.send(video_unavailable))
+    
+    def clear_queue_lists(self):
+        self.music_queue = []
+        self.music_queue_titles = []
 
     @to_thread
-    def dl_long_video(self, m_url):
-        with yt_dlp.YoutubeDL(self.YDL_OPTIONS) as ydl:
-            ydl.download(m_url)
+    def dl_long_video(self, ctx, m_url):
+        self.dl_video(ctx, m_url)
 
+    def dl_video(self, ctx, m_url):
+        try:
+            with yt_dlp.YoutubeDL(self.YDL_OPTIONS) as ydl:
+                ydl.download(m_url)
+        except Exception as e:
+            self.client.loop.create_task(ctx.send(e))
+            self.client.loop.create_task(ctx.send("The video will be skipped."))
+            self.play_next(ctx)
+
+                
     def play_next(self, ctx):
         if self.should_repeat:
             voice = discord.utils.get(self.client.voice_clients, guild=ctx.guild)
-            voice.play(discord.FFmpegPCMAudio("song.webm"), after=lambda e: self.play_next(ctx))
+            voice.play(discord.FFmpegPCMAudio("song.webm"), after=lambda: self.play_next(ctx))
         else:
             if len(self.music_queue) > 0:
                 self.is_playing = True
@@ -86,20 +102,25 @@ class Music(commands.Cog):
                                           guild=ctx.guild)
                 # Pop the first element, because we just stored it in the var m_url
                 self.music_queue.pop(0)
+                self.music_queue_titles.pop(0)
                 song_there = os.path.isfile("song.webm")
                 if song_there:
-                    os.remove("song.webm")
-                    if self.long_video is True:
-                        self.client.loop.create_task(self.dl_long_video(m_url))
-                        self.client.loop.create_task(ctx.send(long_video))
-                    else:
-                        with yt_dlp.YoutubeDL(self.YDL_OPTIONS) as ydl:
-                            ydl.download(m_url)
-                    for file in os.listdir("./"):
-                        if file.endswith(".webm"):
-                            os.rename(file, "song.webm")
-                            voice.play(discord.FFmpegPCMAudio("song.webm"),
-                                       after=lambda e: self.play_next(ctx))
+                    try:
+                        os.remove("song.webm")
+                    except Exception:
+                        self.client.loop.create_task(ctx.send(crashed_bot))
+                        self.clear_queue_lists()
+                        self.client.loop.create_task(voice.disconnect())
+                if self.long_video is True:
+                    self.client.loop.create_task(ctx.send(warn_long_video))
+                    self.client.loop.create_task(self.dl_long_video(ctx, m_url))
+                else:
+                    self.dl_video(ctx, m_url)
+                for file in os.listdir("./"):
+                    if file.endswith(".webm"):
+                        os.rename(file, "song.webm")
+                        voice.play(discord.FFmpegPCMAudio("song.webm"),
+                                   after=lambda e: self.play_next(ctx))
             else:
                 self.is_playing = False
                 voice = discord.utils.get(self.client.voice_clients,
@@ -122,15 +143,15 @@ class Music(commands.Cog):
             if voice is None:
                 voice = await voiceChannel.connect()
             self.music_queue.pop(0)
+            self.music_queue_titles.pop(0)
             song_there = os.path.isfile("song.webm")
             if song_there:
                 os.remove("song.webm")
             if self.long_video is True:
-                await self.dl_long_video(m_url)
-                await ctx.send(long_video)
+                await ctx.send(warn_long_video)
+                await self.dl_long_video(ctx, m_url)
             else:
-                with yt_dlp.YoutubeDL(self.YDL_OPTIONS) as ydl:
-                    ydl.download(m_url)
+                self.dl_video(ctx, m_url)
             for file in os.listdir("./"):
                 if file.endswith(".webm"):
                     os.rename(file, "song.webm")
@@ -169,9 +190,13 @@ class Music(commands.Cog):
                     song_dict: typing.Dict = self.search_yt(args, ctx)
                     if "webpage_url" in song_dict:
                         url = song_dict.get("webpage_url")
+                        title = song_dict.get("title")
+                        self.music_queue_titles
                     else:
                         url = song_dict.get("url")
+                        title = song_dict.get("title")
                     self.music_queue.append(url)
+                    self.music_queue_titles.append(title)
                     await ctx.send("Song added to the queue.")
                     if self.is_playing is False:
                         await self.play_music(ctx)
@@ -184,7 +209,7 @@ class Music(commands.Cog):
                                   guild=ctx.guild)
         is_playing = voice.is_playing()
         if is_playing:
-            self.music_queue = []
+            self.clear_queue_lists()
             await ctx.send("Bot stopped and cleared the queue. "
                            "(If you didnt want to clear the queue, "
                            "use the pause command next time instead of stop.)")
@@ -196,7 +221,7 @@ class Music(commands.Cog):
     async def leave(self, ctx):
         voice = discord.utils.get(self.client.voice_clients, guild=ctx.guild)
         if voice is not None:
-            self.music_queue = []
+            self.clear_queue_lists()
             await voice.disconnect()
             await ctx.send("Bot left the channel and cleared the queue.")
         else:
@@ -214,43 +239,48 @@ class Music(commands.Cog):
 
     @commands.command()
     async def list(self, ctx):
-        works = False
-        if works is False:
-            await ctx.send("Sorry, not yet implemented.")
-            for i in self.music_queue:
-                print(i)
+        if len(self.music_queue) > 0:
+            embed = discord.Embed(title="Queue:",
+                                  description=" ",
+                                  color=0xFF6733)
+            i = 1
+            for _ in self.music_queue:
+                if i > 25:
+                    break
+                embed.add_field(name=str(i) + ":",
+                                value=str(self.music_queue_titles[i-1]))
+                i += 1
+            await ctx.send(embed=embed)
         else:
-            if len(self.music_queue) > 0:
-                embed = discord.Embed(title="Queue:",
-                                      description=" ",
-                                      color=0xFF6733)
-                i = 1
-                for e in self.music_queue:
-                    embed.add_field(name=str(i) + ":",
-                                    value=str(e))
-                    i += 1
-            else:
-                await ctx.send("Nothing is in the queue.")
+            await ctx.send("Nothing is in the queue.")
 
     @commands.command()
     async def skip(self, ctx):
-        voice = discord.utils.get(self.client.voice_clients, guild=ctx.guild)
-        if voice is None or len(self.music_queue) < 0:
-            await ctx.send("Nothing is in the queue, or playing.")
-        elif len(self.music_queue) > 0:
-            # Dont use stop(), because that would call the after func
-            # which we dont want...
-            # Using pause, we bypass that
-            voice.pause()
-            self.play_next(ctx)
-            await ctx.send("Skipped song.")
-        elif voice.is_playing():
-            voice.stop()
+        try:
+            voice = discord.utils.get(self.client.voice_clients, guild=ctx.guild)
+            if voice is None or len(self.music_queue) < 0:
+                await ctx.send("Nothing is in the queue, or playing.")
+            elif len(self.music_queue) > 0:
+                # Dont use stop(), because that would call the after func
+                # which we dont want...
+                # Using pause, we bypass that
+                voice.pause()
+                self.play_next(ctx)
+                await ctx.send("Skipped song.")
+            elif voice.is_playing():
+                voice.stop()
+        except Exception as e:
+            print(e)
 
     @commands.command()
     async def shuffle(self, ctx):
         if len(self.music_queue) > 0:
-            random.shuffle(self.music_queue)
+            temp = list(zip(self.music_queue, self.music_queue_titles))
+            random.shuffle(temp)
+            self.music_queue, self.music_queue_titles = list(zip(*temp))
+            # This returns tuples, for whatever reasons. So we have to convert it.
+            self.music_queue = list(self.music_queue)
+            self.music_queue_titles = list(self.music_queue_titles)
             await ctx.send("Shuffled the queue.")
         else:
             await ctx.send("Nothing is in the queue.")
