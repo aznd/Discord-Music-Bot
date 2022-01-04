@@ -5,13 +5,25 @@ from yt_dlp import YoutubeDL
 import logging
 import typing
 import random
-
+import functools
 import yt_dlp
+import asyncio
 logging.basicConfig(level=logging.WARNING)
 
 video_unavailable = "This video is no longer available. It will be skipped."
 queue_empty = "Queue is now empty, leaving the voice channel."
 user_not_in_vc = "You need to be in a voice channel to use this command."
+long_video = """This seems like a long video. The download could take longer than normal.""" \
+             """The bot will still respond during download."""
+
+def to_thread(func: typing.Callable) -> typing.Coroutine:
+        global queue_of_titles
+        global queue_of_urls
+
+        @functools.wraps(func)
+        async def wrapper(*args, **kwargs):
+            return await asyncio.to_thread(func, *args, **kwargs)
+        return wrapper
 
 
 class Music(commands.Cog):
@@ -25,7 +37,9 @@ class Music(commands.Cog):
         self.data_dict = ""
         self.music_queue = []
         self.now_playing_url = ""
-
+        self.long_video = False
+    
+    
     def download_playlist(self, playlist_url, x):
         with yt_dlp.YoutubeDL(self.YDL_OPTIONS) as ydl:
             playlist_dict: typing.Dict = ydl.extract_info(playlist_url,
@@ -44,9 +58,20 @@ class Music(commands.Cog):
                 else:
                     self.data_dict = ydl.extract_info(f"ytsearch:{arg}",
                                                       download=False)['entries'][0]
-            return self.data_dict
+            print(self.data_dict)
+            if self.data_dict.get("duration") >= 1800:
+                self.long_video = True
+                return self.data_dict
+            else:
+                self.long_video = False
+                return self.data_dict
         except Exception:
             self.client.loop.create_task(ctx.send(video_unavailable))
+
+    @to_thread
+    def dl_long_video(self, m_url):
+        with yt_dlp.YoutubeDL(self.YDL_OPTIONS) as ydl:
+            ydl.download(m_url)
 
     def play_next(self, ctx):
         if self.should_repeat:
@@ -65,8 +90,12 @@ class Music(commands.Cog):
                 song_there = os.path.isfile("song.webm")
                 if song_there:
                     os.remove("song.webm")
-                    with yt_dlp.YoutubeDL(self.YDL_OPTIONS) as ydl:
-                        ydl.download(m_url)
+                    if self.long_video is True:
+                        self.client.loop.create_task(self.dl_long_video(m_url))
+                        self.client.loop.create_task(ctx.send(long_video))
+                    else:
+                        with yt_dlp.YoutubeDL(self.YDL_OPTIONS) as ydl:
+                            ydl.download(m_url)
                     for file in os.listdir("./"):
                         if file.endswith(".webm"):
                             os.rename(file, "song.webm")
@@ -97,8 +126,12 @@ class Music(commands.Cog):
             song_there = os.path.isfile("song.webm")
             if song_there:
                 os.remove("song.webm")
-            with yt_dlp.YoutubeDL(self.YDL_OPTIONS) as ydl:
-                ydl.download(m_url)
+            if self.long_video is True:
+                await self.dl_long_video(m_url)
+                await ctx.send(long_video)
+            else:
+                with yt_dlp.YoutubeDL(self.YDL_OPTIONS) as ydl:
+                    ydl.download(m_url)
             for file in os.listdir("./"):
                 if file.endswith(".webm"):
                     os.rename(file, "song.webm")
