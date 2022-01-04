@@ -58,7 +58,6 @@ class Music(commands.Cog):
                 else:
                     self.data_dict = ydl.extract_info(f"ytsearch:{arg}",
                                                       download=False)['entries'][0]
-            print(self.data_dict)
             if self.data_dict.get("duration") >= 1800:
                 self.long_video = True
                 return self.data_dict
