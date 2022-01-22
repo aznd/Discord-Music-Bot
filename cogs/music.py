@@ -15,7 +15,6 @@ queue_empty = "Queue is now empty, leaving the voice channel."
 user_not_in_vc = "You need to be in a voice channel to use this command."
 warn_long_video = """This seems like a long video. The download could take longer than normal.""" \
              """The bot will still respond during download."""
-crashed_bot = "Well, you messed up the bot. The bot will now leave and clear the queue. Maybe don't spam the skip command next time..."
 
 
 def to_thread(func: typing.Callable) -> typing.Coroutine:
@@ -109,7 +108,7 @@ class Music(commands.Cog):
                     try:
                         os.remove("song.webm")
                     except Exception:
-                        self.client.loop.create_task(ctx.send(crashed_bot))
+                        self.client.loop.create_task(ctx.send("Please restart server."))
                         self.clear_queue_lists()
                         self.client.loop.create_task(voice.disconnect())
                 if self.long_video is True:
