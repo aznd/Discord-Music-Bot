@@ -17,14 +17,15 @@ warn_long_video = """This seems like a long video. The download could take longe
              """The bot will still respond during download."""
 crashed_bot = "Well, you messed up the bot. The bot will now leave and clear the queue. Maybe don't spam the skip command next time..."
 
-def to_thread(func: typing.Callable) -> typing.Coroutine:
-        global queue_of_titles
-        global queue_of_urls
 
-        @functools.wraps(func)
-        async def wrapper(*args, **kwargs):
-            return await asyncio.to_thread(func, *args, **kwargs)
-        return wrapper
+def to_thread(func: typing.Callable) -> typing.Coroutine:
+    global queue_of_titles
+    global queue_of_urls
+
+    @functools.wraps(func)
+    async def wrapper(*args, **kwargs):
+        return await asyncio.to_thread(func, *args, **kwargs)
+    return wrapper
 
 
 class Music(commands.Cog):
@@ -40,8 +41,7 @@ class Music(commands.Cog):
         self.music_queue_titles = []
         self.now_playing_url = ""
         self.long_video = False
-    
-    
+
     def download_playlist(self, playlist_url, x):
         with yt_dlp.YoutubeDL(self.YDL_OPTIONS) as ydl:
             playlist_dict: typing.Dict = ydl.extract_info(playlist_url,
@@ -87,11 +87,12 @@ class Music(commands.Cog):
             self.client.loop.create_task(ctx.send("The video will be skipped."))
             self.play_next(ctx)
 
-                
     def play_next(self, ctx):
         if self.should_repeat:
-            voice = discord.utils.get(self.client.voice_clients, guild=ctx.guild)
-            voice.play(discord.FFmpegPCMAudio("song.webm"), after=lambda: self.play_next(ctx))
+            voice = discord.utils.get(self.client.voice_clients,
+                                      guild=ctx.guild)
+            voice.play(discord.FFmpegPCMAudio("song.webm"),
+                       after=lambda: self.play_next(ctx))
         else:
             if len(self.music_queue) > 0:
                 self.is_playing = True
@@ -100,7 +101,7 @@ class Music(commands.Cog):
                 self.now_playing_url = m_url
                 voice = discord.utils.get(self.client.voice_clients,
                                           guild=ctx.guild)
-                # Pop the first element, because we just stored it in the var m_url
+                # Pop the first element, because we just stored it in m_url
                 self.music_queue.pop(0)
                 self.music_queue_titles.pop(0)
                 song_there = os.path.isfile("song.webm")
@@ -257,7 +258,8 @@ class Music(commands.Cog):
     @commands.command()
     async def skip(self, ctx):
         try:
-            voice = discord.utils.get(self.client.voice_clients, guild=ctx.guild)
+            voice = discord.utils.get(self.client.voice_clients,
+                                      guild=ctx.guild)
             if voice is None or len(self.music_queue) < 0:
                 await ctx.send("Nothing is in the queue, or playing.")
             elif len(self.music_queue) > 0:
@@ -278,7 +280,7 @@ class Music(commands.Cog):
             temp = list(zip(self.music_queue, self.music_queue_titles))
             random.shuffle(temp)
             self.music_queue, self.music_queue_titles = list(zip(*temp))
-            # This returns tuples, for whatever reasons. So we have to convert it.
+            # This returns tuples, for whatever reasons. so we have to convert.
             self.music_queue = list(self.music_queue)
             self.music_queue_titles = list(self.music_queue_titles)
             await ctx.send("Shuffled the queue.")
@@ -291,7 +293,8 @@ class Music(commands.Cog):
             await ctx.send("Nothing is currently playing.")
         else:
             with yt_dlp.YoutubeDL(self.YDL_OPTIONS) as ydl:
-                data: typing.Dict = ydl.extract_info(self.now_playing_url, download=False)
+                data: typing.Dict = ydl.extract_info(self.now_playing_url,
+                                                     download=False)
                 title = data.get("title")
                 artist = data.get("artist")
                 thumbnail = data.get("thumbnail")
@@ -312,10 +315,10 @@ class Music(commands.Cog):
         if self.is_playing is False:
             await ctx.send("Nothing is currently playing.")
         else:
-            if self.should_repeat == False:
+            if self.should_repeat is False:
                 self.should_repeat = True
                 await ctx.send("Now looping current song. To end this, use this command again.")
-            elif self.should_repeat == True:
+            elif self.should_repeat:
                 self.should_repeat = False
                 await ctx.send("No longer looping the current song.")
 
