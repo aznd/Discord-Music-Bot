@@ -22,15 +22,20 @@ class Administration(commands.Cog):
                 "Accept": "application/json"
         }
         response = requests.request('POST', url, headers=headers)
-        print(response.text)
+        return response.text
 
     @commands.command()
     async def restartserver(self, ctx):
-        await ctx.send("Now restarting the server...")
-        try:
-            self.executeschedule()
-        except Exception as e:
-            logging.log(logging.ERROR, e)
+        response = self.executeschedule()
+        result = response.find("AccessDeniedHttpException")
+        other_result = response.find("[]")
+        if result != -1:
+            await ctx.send("An error occured. Please check the config.")
+            await ctx.send(response)
+        elif other_result != -1:
+            await ctx.send("Now restarting the server...")
+        else:
+            await ctx.send("Please contact @aznd. Unexpected Error.")
 
 
 def setup(client):
