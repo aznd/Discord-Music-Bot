@@ -18,6 +18,7 @@ After that, you can run this bot with
 
 ## TODO:
 
+- [ ] User should be able to use their own endpoints etc. (use some conf file)
 - [X] Implement list command
 - [X] Implement loop/repeat command
 - [X] Fix issue with blocking heartbeat, when a video takes too long to download.

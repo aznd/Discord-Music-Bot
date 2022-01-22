@@ -22,7 +22,7 @@ class Administration(commands.Cog):
         response = requests.request('POST', url, headers=headers)
         print(response.text)
 
-    @commands.cmmand()
+    @commands.command()
     async def restartserver(self, ctx):
         await ctx.send("Now restarting the server...")
         self.executeschedule()
