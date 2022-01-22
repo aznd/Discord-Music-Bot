@@ -18,6 +18,7 @@ After that, you can run this bot with
 
 ## TODO:
 
+- [ ] Dont use two loggers, only use one. (admin.py and music.py)
 - [ ] User should be able to use their own endpoints etc. (use some conf file)
 - [X] Implement list command
 - [X] Implement loop/repeat command
