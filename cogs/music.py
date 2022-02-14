@@ -309,6 +309,27 @@ class Music(commands.Cog):
                 embed.set_thumbnail(url=thumbnail)
                 await ctx.send(embed=embed)
 
+    @commands.command
+    async def pause(self, ctx):
+        if self.is_playing:
+            voice = discord.utils.get(self.client.voice_clients,
+                                      guild=ctx.guild)
+            voice.pause()
+            self.is_playing = False
+        else:
+            await ctx.send("""Nothing is currently playing.\n
+                              Did you maybe want to use the resume command?""")
+
+    @commands.command
+    async def resume(self, ctx):
+        if not self.is_playing:
+            voice = discord.utils.get(self.client.voice_clients,
+                                      guild=ctx.guild)
+            voice.resume()
+            self.is_playing = True
+        else:
+            await ctx.send("Nothing is currently paused.")
+
     @commands.command(aliases=['loop'])
     async def repeat(self, ctx):
         if self.is_playing is False:
