@@ -68,7 +68,7 @@ class Music(commands.Cog):
                 return self.data_dict
         except Exception:
             self.client.loop.create_task(ctx.send(video_unavailable))
-    
+
     def clear_queue_lists(self):
         self.music_queue = []
         self.music_queue_titles = []
@@ -237,7 +237,7 @@ class Music(commands.Cog):
         except AttributeError:
             await ctx.send(user_not_in_vc)
 
-    @commands.command()
+    @commands.command(aliases=['queue'])
     async def list(self, ctx):
         if len(self.music_queue) > 0:
             embed = discord.Embed(title="Queue:",
@@ -309,7 +309,7 @@ class Music(commands.Cog):
                 embed.set_thumbnail(url=thumbnail)
                 await ctx.send(embed=embed)
 
-    @commands.command
+    @commands.command()
     async def pause(self, ctx):
         if self.is_playing:
             voice = discord.utils.get(self.client.voice_clients,
@@ -317,18 +317,24 @@ class Music(commands.Cog):
             voice.pause()
             self.is_playing = False
         else:
-            await ctx.send("""Nothing is currently playing.\n
-                              Did you maybe want to use the resume command?""")
+            await ctx.send("Nothing is currently playing.\n"
+                           "Did you maybe want to use the resume command?")
 
-    @commands.command
+    @commands.command()
     async def resume(self, ctx):
-        if not self.is_playing:
-            voice = discord.utils.get(self.client.voice_clients,
-                                      guild=ctx.guild)
-            voice.resume()
-            self.is_playing = True
+        voice = discord.utils.get(self.client.voice_clients,
+                                  guild=ctx.guild)
+        if voice:
+            if self.is_playing is False:
+                voice = discord.utils.get(self.client.voice_clients,
+                                          guild=ctx.guild)
+                voice.resume()
+                self.is_playing = True
+            else:
+                await ctx.send("Nothing is currently paused.")
         else:
-            await ctx.send("Nothing is currently paused.")
+            logging.error("No voice_client found.")
+            await ctx.send("Nothing is currently playing.")
 
     @commands.command(aliases=['loop'])
     async def repeat(self, ctx):
@@ -341,6 +347,25 @@ class Music(commands.Cog):
             elif self.should_repeat:
                 self.should_repeat = False
                 await ctx.send("No longer looping the current song.")
+
+    @commands.command()
+    async def playnext(self, ctx, *, args):
+        try:
+            ctx.message.author.voice.channel
+        except Exception:
+            await ctx.send(user_not_in_vc)
+            return
+        song_dict: typing.Dict = self.search_yt(args, ctx)
+        if "webpage_url" in song_dict:
+            url = song_dict.get("webpage_url")
+            title = song_dict.get("title")
+            self.music_queue_titles
+        else:
+            url = song_dict.get("url")
+            title = song_dict.get("title")
+        self.music_queue.insert(0, url)
+        self.music_queue_titles.insert(0, title)
+        await ctx.send(f"{title} will be played after the current title ends.")
 
 
 def setup(client):
