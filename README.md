@@ -24,6 +24,8 @@ But if you are interested in this, you probably know how to change things accord
 
 ## TODO:
 
+- [ ] Join Command: User should be able to specify a channel the bot should join. 
+- [ ] User should be able to use all media commands even if their are not in a channel, as long as the bot is in a channel.
 - [ ] User should be able to use their own endpoints etc. (use some conf file)
 - [ ] Dont use two loggers, only use one. (admin.py and music.py)
 - [X] Implement list command
